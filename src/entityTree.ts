@@ -1,6 +1,6 @@
-import { CMAClient, Entry } from "@contentful/app-sdk";
-import { ContentFields, KeyValueMap } from "contentful-management";
-import { Analytics } from "./analytics";
+import { CMAClient, Entry } from '@contentful/app-sdk';
+import { ContentFields, KeyValueMap } from 'contentful-management';
+import { Analytics } from './analytics';
 import {
   AssetDecorator,
   CellModel,
@@ -13,7 +13,7 @@ import {
   LocalizableRow,
   NonLocalizableLinkRow,
   NonLocalizableRow,
-} from "./components/Models";
+} from './components/Models';
 
 interface IEntityLocales {
   type: string;
@@ -31,22 +31,14 @@ export class EntryTree {
   private cacheHit: number = 0;
   private entitiesCache: Map<string, any> = new Map();
   private cacheHitRate() {
-    return (
-      Math.round(
-        (this.cacheHit / (this.cacheHit + this.entitiesCount)) * 1000
-      ) / 10
-    );
+    return Math.round((this.cacheHit / (this.cacheHit + this.entitiesCount)) * 1000) / 10;
   }
 
   private sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  private async getEntity(
-    func: (id: string) => any,
-    entityId: string,
-    entityType: string
-  ) {
+  private async getEntity(func: (id: string) => any, entityId: string, entityType: string) {
     if (this.entitiesCache.get(entityId)) {
       this.cacheHit++;
       return this.entitiesCache.get(entityId);
@@ -70,19 +62,15 @@ export class EntryTree {
     return await this.getEntity(
       (id: string) => this.cma.entry.get({ entryId: id }),
       id,
-      "entity"
+      'entity'
     ).catch((ex) => {
-      if (ex.message === "The resource could not be found.") return null;
+      if (ex.message === 'The resource could not be found.') return null;
       throw ex;
     });
   }
 
   private async getAsset(id: string) {
-    return await this.getEntity(
-      (id: string) => this.cma.asset.get({ assetId: id }),
-      id,
-      "asset"
-    );
+    return await this.getEntity((id: string) => this.cma.asset.get({ assetId: id }), id, 'asset');
   }
 
   private async getContentType(id: string) {
@@ -100,9 +88,7 @@ export class EntryTree {
     const entry = await this.getEntry(entityId);
 
     if (!entry) {
-      console.debug(
-        `Entity ${entityId} was not found in Contentful. Probably it was removed.`
-      );
+      console.debug(`Entity ${entityId} was not found in Contentful. Probably it was removed.`);
       return null;
     }
     const contentType = await this.getContentType(entry.sys.contentType.sys.id);
@@ -124,17 +110,14 @@ export class EntryTree {
 
     visitedNodes.add(entityId); // Mark the node as visited
 
-    if (type === "Asset") {
+    if (type === 'Asset') {
       return this.getAssetRows(entityId);
     }
 
     const entryDecorator = await this.loadEntryDecorator(entityId);
     if (!entryDecorator) return null;
 
-    if (
-      parentEntityType &&
-      this.excludedContentTypes.includes(parentEntityType)
-    ) {
+    if (parentEntityType && this.excludedContentTypes.includes(parentEntityType)) {
       return [[], entryDecorator];
     }
 
@@ -143,11 +126,7 @@ export class EntryTree {
       if (field.disabled || field.deleted) continue;
 
       if (this.isLinkedField(field)) {
-        const row = await this.getLinkedRow(
-          entryDecorator.entry,
-          field,
-          visitedNodes
-        );
+        const row = await this.getLinkedRow(entryDecorator.entry, field, visitedNodes);
         if (row) entityLevelRows.push(row);
       } else if (field.localized) {
         const row = this.getFieldRow(entryDecorator.entry, field);
@@ -158,10 +137,7 @@ export class EntryTree {
   }
 
   protected isLinkedField(field: ContentFields<KeyValueMap>) {
-    return (
-      field.type === "Link" ||
-      (field.type === "Array" && field.items && field.items.linkType)
-    );
+    return field.type === 'Link' || (field.type === 'Array' && field.items && field.items.linkType);
   }
 
   protected getFieldRow(
@@ -182,10 +158,7 @@ export class EntryTree {
       var fieldValue: string | null = null;
 
       if (hostEntry.fields[field.id]) {
-        if (
-          hostEntry.fields[field.id][locale] &&
-          hostEntry.fields[field.id][locale].sys
-        )
+        if (hostEntry.fields[field.id][locale] && hostEntry.fields[field.id][locale].sys)
           fieldValue = hostEntry.fields[field.id][locale].sys.id;
         else fieldValue = hostEntry.fields[field.id][locale];
       }
@@ -209,11 +182,7 @@ export class EntryTree {
     fieldLevelRow.children = [];
 
     if (field.localized) {
-      const localizedLinks: {
-        locale: string;
-        entityId: string;
-        entityType: string;
-      }[] = [];
+      const localizedLinks: { locale: string; entityId: string; entityType: string }[] = [];
       const uniqueLinks: Map<string, IEntityLocales> = new Map();
 
       for (const locale of this.locales) {
@@ -226,9 +195,7 @@ export class EntryTree {
           });
           uniqueLinks.set(link.sys.id, {
             type: link.sys.linkType,
-            locales: uniqueLinks.get(link.sys.id)?.locales.concat(locale) || [
-              locale,
-            ],
+            locales: uniqueLinks.get(link.sys.id)?.locales.concat(locale) || [locale],
           });
         }
       }
@@ -245,7 +212,7 @@ export class EntryTree {
         if (row) fieldLevelRow.children.push(row);
       }
     } else {
-      const links = this.getLinks(hostEntry, field, "en-US");
+      const links = this.getLinks(hostEntry, field, 'en-US');
       for (const link of links) {
         const row = await this.linkedEntityLevelRow(
           field,
@@ -262,15 +229,9 @@ export class EntryTree {
     return fieldLevelRow.children.length > 0 ? fieldLevelRow : null;
   }
 
-  private getLinks(
-    entry: Entry<KeyValueMap>,
-    field: ContentFields<KeyValueMap>,
-    locale: string
-  ) {
-    const value = entry.fields[field.id]
-      ? entry.fields[field.id][locale] || null
-      : null;
-    return !value ? [] : field.type === "Array" ? value : [value];
+  private getLinks(entry: Entry<KeyValueMap>, field: ContentFields<KeyValueMap>, locale: string) {
+    const value = entry.fields[field.id] ? entry.fields[field.id][locale] || null : null;
+    return !value ? [] : field.type === 'Array' ? value : [value];
   }
 
   private async linkedEntityLevelRow(
@@ -289,7 +250,7 @@ export class EntryTree {
         (l) =>
           new ClickableCellModel(
             l,
-            entityLocales.indexOf(l) >= 0 ? "+" : null,
+            entityLocales.indexOf(l) >= 0 ? '+' : null,
             l,
             CellType.EntryLevel
           )
@@ -301,20 +262,14 @@ export class EntryTree {
         `Entity ID ${entityId} is recursively nested into current tree branch. Skipping it.`
       );
       const entry = await this.getEntry(entityId);
-      const contentType = await this.getContentType(
-        entry.sys.contentType.sys.id
-      );
+      const contentType = await this.getContentType(entry.sys.contentType.sys.id);
       const decorator = new EntryDecorator(entry, contentType);
       return localized
         ? new LocalizableLinkRow(decorator.name, decorator, cells, [], true)
         : new NonLocalizableLinkRow(decorator.name, decorator, [], true);
     }
 
-    const children = await this.getEntityRows(
-      entityId,
-      entityType,
-      parentEntityType
-    );
+    const children = await this.getEntityRows(entityId, entityType, parentEntityType);
     if (!children) return null;
 
     const entity = children[1];
@@ -327,9 +282,7 @@ export class EntryTree {
     return entityLevelRow;
   }
 
-  protected async getAssetRows(
-    assetId: string
-  ): Promise<[LocalizableRow[], IEntity] | null> {
+  protected async getAssetRows(assetId: string): Promise<[LocalizableRow[], IEntity] | null> {
     const asset = await this.getAsset(assetId);
 
     let rows: LocalizableRow[] = [];
@@ -339,33 +292,25 @@ export class EntryTree {
     let fileCells: CellModel[] = [];
 
     for (const locale of this.locales) {
-      const title = asset.fields.title ? asset.fields.title[locale] : "";
-      titleCells.push(new ClickableCellModel("title", title, locale));
+      const title = asset.fields.title ? asset.fields.title[locale] : '';
+      titleCells.push(new ClickableCellModel('title', title, locale));
 
-      const description = asset.fields.description
-        ? asset.fields.description[locale]
-        : "";
-      descriptionCells.push(
-        new ClickableCellModel("description", description, locale)
-      );
+      const description = asset.fields.description ? asset.fields.description[locale] : '';
+      descriptionCells.push(new ClickableCellModel('description', description, locale));
 
-      const file = asset.fields.file[locale]
-        ? asset.fields.file[locale].url || null
-        : "";
-      fileCells.push(
-        new ClickableCellModel("file", file, locale, CellType.FieldImage)
-      );
+      const file = asset.fields.file[locale] ? asset.fields.file[locale].url || null : '';
+      fileCells.push(new ClickableCellModel('file', file, locale, CellType.FieldImage));
     }
 
-    rows.push(new LocalizableRow("title", titleCells));
-    rows.push(new LocalizableRow("description", descriptionCells));
-    rows.push(new LocalizableRow("file", fileCells));
+    rows.push(new LocalizableRow('title', titleCells));
+    rows.push(new LocalizableRow('description', descriptionCells));
+    rows.push(new LocalizableRow('file', fileCells));
 
     return Promise.resolve([rows, new AssetDecorator(asset)]);
   }
 
   public getRowsTree(entryId: string): Promise<Row[]> {
-    return this.getEntityRows(entryId, "Entry")
+    return this.getEntityRows(entryId, 'Entry')
       .then((result) => {
         return result ? result[0] : [];
       })
