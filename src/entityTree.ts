@@ -123,6 +123,8 @@ export class EntryTree {
 
     const entityLevelRows: Row[] = [];
     for (const field of entryDecorator.contentType.fields) {
+      if (field.disabled || field.deleted) continue;
+
       if (this.isLinkedField(field)) {
         const row = await this.getLinkedRow(entryDecorator.entry, field, visitedNodes);
         if (row) entityLevelRows.push(row);
